@@ -1,2 +1,2 @@
-/api_tokens.json
 .env
+*.env

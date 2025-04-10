@@ -76,7 +76,7 @@ class FitFileDecoder:
                     self.dict_items[data].append(record[data])
 
     @staticmethod
-    def _pace_calculate(speed):
+    def pace_calculate(speed):
         """
         Calculates the pace based on speed.
 
@@ -97,7 +97,7 @@ class FitFileDecoder:
         self._extract_data()
 
         if "enhanced_speed" in self.expected_data:
-            self.dict_items["pace"] = [self._pace_calculate(x*3.6) for x in self.dict_items["enhanced_speed"]]
+            self.dict_items["pace"] = [self.pace_calculate(x*3.6) for x in self.dict_items["enhanced_speed"]]
 
     def pace_within_limit(self):
         """

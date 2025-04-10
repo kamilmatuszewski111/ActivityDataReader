@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 TOKEN_URL = "https://www.strava.com/oauth/token"
 ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"
-# AUTHORIZATION_CODE = "d26dc961f305425071a6218b62b7e86afe33d2c7"
+ONE_ACTIVITY_TEMPLATE = 'https://www.strava.com/api/v3/activities/{}/streams'
 
 # response = requests.post(TOKEN_URL, data={
 #     "client_id": loaded_tokens["CLIENT_ID"],
@@ -18,14 +18,15 @@ ACTIVITIES_URL = "https://www.strava.com/api/v3/athlete/activities"
 # })
 
 
-class StravaAPI:
+class StravaAPIRequests:
     def __init__(self):
         self.loaded_tokens = defaultdict()
+        load_dotenv(override=True)
         self._load_tokens()
         self.start_date = None
         self.end_date = None
         self.activities = None
-        load_dotenv(override=True)
+
 
     def _save_to_env(self, data: dict):
         logger.info("Saving data to .env file.")
@@ -85,11 +86,6 @@ class StravaAPI:
         headers = {"Authorization": f"Bearer {self.loaded_tokens['ACCESS_TOKEN']}"}
 
         logger.info("Create datetime params. Please put your start and end date.")
-
-        # params = {
-        #     'keys': 'heartrate,velocity_smooth',
-        #     'key_by_type': 'true',
-        # }
         self.start_date = input("Start date in YYYY-MM-DD format")
         self.end_date = input("End date in YYYY-MM-DD format")
 
@@ -117,8 +113,42 @@ class StravaAPI:
             print("Error:", response.status_code, response.text)
             return None
 
-    def activities_details_request(self):
-        pass
+    def _activity_details_request(self, activity_id):
+        url = ONE_ACTIVITY_TEMPLATE.format(activity_id)
+        headers = {"Authorization": f"Bearer {self.loaded_tokens['ACCESS_TOKEN']}"}
+        params = {
+            "keys": "heartrate,velocity_smooth",
+            "key_by_type": "true",
+        }
 
-kupa = StravaAPI()
-activities = kupa.activities_request()
+        logger.info(f"Sending request for {activity_id} ID...")
+        response = requests.get(url, headers=headers, params=params)
+        if response.status_code == 200:
+            logger.success("Response from server received correctly.")
+            return response.json()
+
+        else:
+            logger.error("Response from server received incorrectly.", response.status_code, response.text)
+            print("Error:", response.status_code, response.text)
+            return None
+
+    def collect_required_data(self):
+        self.activities_request()
+
+        temp_dict = defaultdict(list)
+        for element in self.activities:
+            if element["type"] == "Run":
+                temp_dict[element["id"]] = [element["start_date_local"]]
+
+        for key, value in temp_dict.items():
+            temp_activity_details = self._activity_details_request(key)
+            temp_dict[key].append(temp_activity_details["heartrate"]["data"])
+            temp_dict[key].append(temp_activity_details["velocity_smooth"]["data"])
+        logger.success("COLLECTING DATA FINISHED.")
+        return temp_dict
+
+
+
+
+
+
